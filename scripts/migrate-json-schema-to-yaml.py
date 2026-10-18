@@ -32,6 +32,7 @@ class IndentDumper(yaml.SafeDumper):
     def increase_indent(self, flow=False, indentless=False):
         return super().increase_indent(flow, False)
 
+
 # Rust's regex crate rejects the original character class. This equivalent
 # spelling works in both Python's re module and Rust's regex crate.
 PATTERN_FIX = {
@@ -66,7 +67,11 @@ def convert_node(node):
         for key, value in node.items():
             if key == "definitions":
                 converted["$defs"] = convert_node(value)
-            elif key == "$ref" and isinstance(value, str) and value.startswith("#/definitions/"):
+            elif (
+                key == "$ref"
+                and isinstance(value, str)
+                and value.startswith("#/definitions/")
+            ):
                 converted[key] = "#/$defs/" + value[len("#/definitions/") :]
             elif key == "pattern" and isinstance(value, str) and value in PATTERN_FIX:
                 converted[key] = PATTERN_FIX[value]
@@ -79,7 +84,11 @@ def convert_node(node):
                 branches = []
                 for branch in value:
                     branch = convert_node(branch)
-                    if isinstance(branch, dict) and "required" in branch and "type" not in branch:
+                    if (
+                        isinstance(branch, dict)
+                        and "required" in branch
+                        and "type" not in branch
+                    ):
                         branch = {"type": "object", **branch}
                     branches.append(branch)
                 converted[key] = branches
@@ -125,14 +134,20 @@ def convert_schema(json_path, yaml_path, remove_json=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert JSON Schema files to YAML Schema files")
-    parser.add_argument("versions", nargs="*", type=int, help="Schema versions to convert")
+    parser = argparse.ArgumentParser(
+        description="Convert JSON Schema files to YAML Schema files"
+    )
+    parser.add_argument(
+        "versions", nargs="*", type=int, help="Schema versions to convert"
+    )
     parser.add_argument(
         "--definitions-dir",
         default=DEFAULT_DEFINITIONS_DIR,
         help=f"Definitions directory (default: {DEFAULT_DEFINITIONS_DIR})",
     )
-    parser.add_argument("--all", action="store_true", help="Convert all version directories")
+    parser.add_argument(
+        "--all", action="store_true", help="Convert all version directories"
+    )
     parser.add_argument(
         "--remove-json",
         action="store_true",
@@ -166,7 +181,10 @@ def main():
             continue
 
         convert_schema(json_path, yaml_path, remove_json=args.remove_json)
-        print(f"v{version}: wrote {yaml_path}" + (" and removed schema.json" if args.remove_json else ""))
+        print(
+            f"v{version}: wrote {yaml_path}"
+            + (" and removed schema.json" if args.remove_json else "")
+        )
         converted += 1
 
     print(f"Converted {converted} schema(s)")

@@ -1,42 +1,28 @@
 [[repos]]
 repo = "builtin"
-
-[[repos.hooks]]
-id = "trailing-whitespace"
-
-[[repos.hooks]]
-id = "end-of-file-fixer"
-
-[[repos.hooks]]
-id = "check-added-large-files"
-
-[[repos.hooks]]
-id = "check-yaml"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "check-added-large-files" },
+  { id = "check-yaml" },
+]
 
 [[repos]]
-repo = "https://github.com/yaml-schema/yaml-schema"
-# Pinned to main until a release includes .pre-commit-hooks.yaml (added after v0.9.3).
-rev = "d7b7e16f9e8aae9016aa7f3fc71d8559945c2380"
-
-[[repos.hooks]]
-id = "ys"
-name = "ys (v11)"
-args = ["-f", "definitions/v11/schema.yaml"]
-files = '^definitions/v11/.*\.ya?ml$'
-exclude = '^definitions/v11/schema\.yaml$'
-
-[[repos.hooks]]
-id = "ys"
-name = "ys (v12)"
-args = ["-f", "definitions/v12/schema.yaml"]
-files = '^definitions/v12/.*\.ya?ml$'
-exclude = '^definitions/v12/schema\.yaml$'
+repo = "https://github.com/adrienverge/yamllint"
+rev = "v1.38.0"
+hooks = [{ id = "yamllint", files = '^definitions/.*\.ya?ml$' }]
 
 [[repos]]
 repo = "https://github.com/python-jsonschema/check-jsonschema"
 rev = "0.38.2"
+hooks = [
+  { id = "check-metaschema", files = '^definitions/.*/schema\.yaml$' }
+]
 
-[[repos.hooks]]
-id = "check-metaschema"
-name = "check-jsonschema metaschema"
-files = '^definitions/(v11|v12)/schema\.yaml$'
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.17.1"
+hooks = [
+  { id = "ruff-check" },
+  { id = "ruff-format" }
+]

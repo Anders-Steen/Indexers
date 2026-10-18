@@ -225,7 +225,7 @@ prek run --all-files
 prek run ys --all-files
 ```
 
-The `ys` hooks validate `definitions/v11` and `definitions/v12` against their `schema.yaml` files; `check-jsonschema` validates the schema files themselves.
+Each active `definitions/vN/` directory has its own `prek.toml` that runs `ys` against that version's `schema.yaml`. When adding a new active version, copy `prek.toml` into the new directory. `check-jsonschema` validates the schema files themselves, `yamllint` checks YAML style, and `ruff-check`/`ruff-format` lint and format Python scripts using `ruff.toml`.
 
 ### CI/CD Workflows
 
@@ -250,7 +250,7 @@ The repository uses several automated workflows to ensure code quality:
 
 #### 4. Prek Validation (`prek-validation.yml`)
 - **Purpose**: Runs the same hooks contributors use locally
-- **Tools**: `prek` with `ys` (yaml-schema), `check-metaschema`, `check-yaml`, and builtin hygiene hooks
+- **Tools**: `prek` with `ys` (yaml-schema), `check-metaschema`, `check-yaml`, `yamllint`, `ruff-check`, `ruff-format`, and builtin hygiene hooks
 - **Runs**: On definition, `prek.toml`, and script changes
 
 #### 5. Indexer Sync Automation (`indexer-sync.yml`)

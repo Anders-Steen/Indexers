@@ -87,7 +87,7 @@ prek install
 prek run --all-files
 ```
 
-The `prek` configuration uses `ys` (yaml-schema) to validate `definitions/v11` and `definitions/v12` against their YAML schemas, and `check-jsonschema` to validate the schema files themselves.
+The `prek` configuration uses per-version `definitions/vN/prek.toml` files to run `ys` (yaml-schema) against each version's `schema.yaml`. Shared checks (`yamllint`, schema metaschema, Ruff, and hygiene hooks) live in the root `prek.toml`.
 
 ## Active Versions
 
