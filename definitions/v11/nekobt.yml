@@ -22,7 +22,7 @@ caps:
 settings:
   - name: apikey
     type: text
-    label: API Key (Optional)
+    label: APIKey (Optional)
   - name: info_key
     type: info
     label: About your API key
