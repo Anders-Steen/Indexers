@@ -6,29 +6,9 @@ on:
     branches:
       - master
       - automated-sync
-    paths:
-      - 'definitions/**/*.yml'
-      - 'definitions/**/*.yaml'
-      - 'definitions/**/prek.toml'
-      - 'prek.toml'
-      - 'scripts/**'
-      - 'requirements.txt'
-      - 'ruff.toml'
-      - '.ryl.toml'
-      - '.github/workflows/prek-validation.yml'
   pull_request:
     branches:
       - master
-    paths:
-      - 'definitions/**/*.yml'
-      - 'definitions/**/*.yaml'
-      - 'definitions/**/prek.toml'
-      - 'prek.toml'
-      - 'scripts/**'
-      - 'requirements.txt'
-      - 'ruff.toml'
-      - '.ryl.toml'
-      - '.github/workflows/prek-validation.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
