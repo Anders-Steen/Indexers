@@ -8,9 +8,14 @@ hooks = [
 ]
 
 [[repos]]
-repo = "https://github.com/adrienverge/yamllint"
-rev = "v1.38.0"
-hooks = [{ id = "yamllint", files = '^definitions/.*\.ya?ml$' }]
+repo = "https://github.com/owenlamont/ryl-pre-commit"
+rev = "v0.26.0"
+
+[[repos.hooks]]
+id = "ryl-check"
+args = ["definitions"]
+pass_filenames = false
+files = '^definitions/.*\.ya?ml$'
 
 [[repos]]
 repo = "https://github.com/python-jsonschema/check-jsonschema"

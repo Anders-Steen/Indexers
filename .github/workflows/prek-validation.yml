@@ -14,7 +14,7 @@ on:
       - 'scripts/**'
       - 'requirements.txt'
       - 'ruff.toml'
-      - '.yamllint'
+      - '.ryl.toml'
       - '.github/workflows/prek-validation.yml'
   pull_request:
     branches:
@@ -27,7 +27,7 @@ on:
       - 'scripts/**'
       - 'requirements.txt'
       - 'ruff.toml'
-      - '.yamllint'
+      - '.ryl.toml'
       - '.github/workflows/prek-validation.yml'
 
 concurrency:

@@ -52,6 +52,7 @@ packages/
 .venv/
 __pycache__/
 .ruff_cache/
+.ryl_cache/
 *.py[cod]
 *$py.class
 *.so

@@ -27,7 +27,7 @@ COMPOSITION_KEYWORDS = ("oneOf", "anyOf", "allOf")
 
 
 class IndentDumper(yaml.SafeDumper):
-    """Indent block sequences to match the repository's yamllint config."""
+    """Indent block sequences to match the repository's YAML style config."""
 
     def increase_indent(self, flow=False, indentless=False):
         return super().increase_indent(flow, False)
