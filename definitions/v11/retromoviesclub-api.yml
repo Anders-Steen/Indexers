@@ -30,6 +30,7 @@ settings:
     default: false
   - name: single_file_release_use_filename
     type: checkbox
+    # Some single-file releases only expose the real name via files[0].name.
     label: Use filename as title for single file releases
     default: true
   - name: sort
