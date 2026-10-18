@@ -8,7 +8,7 @@ This guide covers how to contribute to the Prowlarr Indexers repository, includi
 > **Python 3.11 or higher** is required - must be installed and accessible via `python3` command (alternatively `python` command if it points to Python 3)
 
 - Git
-- Basic understanding of YAML and JSON Schema
+- Basic understanding of YAML and JSON Schema semantics (YAML Schema is based on JSON Schema)
 
 ## Setup
 
@@ -56,7 +56,7 @@ python3 scripts/validate.py
 python3 scripts/validate.py /path/to/definitions
 
 # Validate single file against schema
-python3 scripts/validate.py --single file.yml schema.json
+python3 scripts/validate.py --single file.yml schema.yaml
 
 # Show only first error (default shows all errors)
 python3 scripts/validate.py --first-error-only
@@ -102,11 +102,11 @@ python3 scripts/validate.py --find-best-version file.yml
 
 The validation script automatically detects directory structure and validates accordingly:
 - **Prowlarr structure**: Uses versioned directories (currently `v11/` and `v12/`) with individual schemas
-- **Jackett structure**: Uses flat directory with root `schema.json`
+- **Jackett structure**: Uses a flat directory with a root `schema.yaml` or legacy `schema.json`
 
 ### Schema Versions
 
-Each Cardigann version has its own schema in `definitions/v{VERSION}/schema.json`. Current active versions are:
+Each Cardigann version has its own schema in `definitions/v{VERSION}/schema.yaml` (active v11/v12) or legacy `schema.json` (frozen v1-v10). Current active versions are:
 
 - **v12** - includes:
   - Adds `base64decode` and `base64encode` to FilterBlock
@@ -174,7 +174,7 @@ The Python validation system automatically handles common YAML parsing issues:
 
 #### Schema Strictness
 
-The JSON Schema validation is strict about types:
+The schema validation is strict about types:
 - All dictionary keys must be strings
 - Values must match the expected type exactly
 - Pattern properties are enforced with regex matching
@@ -201,7 +201,7 @@ python3 scripts/validate.py definitions/v11
 python3 scripts/validate.py ../jackett/src/Jackett.Common/Definitions
 
 # Test single file
-python3 scripts/validate.py --single yourindexer.yml schema.json
+python3 scripts/validate.py --single yourindexer.yml schema.yaml
 
 # Show all errors for comprehensive debugging
 python3 scripts/validate.py  # default behavior
@@ -209,6 +209,23 @@ python3 scripts/validate.py  # default behavior
 # Show only first error for quick fixes
 python3 scripts/validate.py --first-error-only
 ```
+
+### Pre-commit Hooks
+
+The repository uses [prek](https://prek.j178.dev/) to run the same checks before commit:
+
+```bash
+# Install the Git hook shims (one time)
+prek install
+
+# Run all hooks, including schema validation
+prek run --all-files
+
+# Run only the definition checks
+prek run ys --all-files
+```
+
+The `ys` hooks validate `definitions/v11` and `definitions/v12` against their `schema.yaml` files; `check-jsonschema` validates the schema files themselves.
 
 ### CI/CD Workflows
 
@@ -227,11 +244,16 @@ The repository uses several automated workflows to ensure code quality:
 - **Runs**: On script changes only
 
 #### 3. Schema Validation (part of `ci.yml`)
-- **Purpose**: Validates all indexer definitions against JSON schemas
+- **Purpose**: Validates all indexer definitions against YAML schemas
 - **Tool**: Python-based validation using `scripts/validate.py`
 - **Coverage**: All definition files in versioned directories
 
-#### 4. Indexer Sync Automation (`indexer-sync.yml`)
+#### 4. Prek Validation (`prek-validation.yml`)
+- **Purpose**: Runs the same hooks contributors use locally
+- **Tools**: `prek` with `ys` (yaml-schema), `check-metaschema`, `check-yaml`, and builtin hygiene hooks
+- **Runs**: On definition, `prek.toml`, and script changes
+
+#### 5. Indexer Sync Automation (`indexer-sync.yml`)
 - **Schedule**: 3 times daily (2 AM, 10 AM, 6 PM UTC)
 - **Purpose**: Automatically syncs indexers from Jackett repository
 - **Features**:
@@ -361,7 +383,7 @@ git push origin feature/new-indexer
 ### Adding New Fields
 
 When adding fields to schemas:
-1. Update the appropriate `definitions/v{VERSION}/schema.json` (currently v11 and v12)
+1. Update the appropriate `definitions/v{VERSION}/schema.yaml` (currently v11 and v12)
 2. Test against existing indexer definitions
 3. Consider backward compatibility
 

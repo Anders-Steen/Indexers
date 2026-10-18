@@ -28,7 +28,7 @@ For Prowlarr Indexer Requests; please see [our request forum on Discord](https:/
 
 ## Schemas
 
-Each Cardigann Version has a YML Schema for it contained within the definitions's respective folder named `schema.json`
+Each Cardigann version has a YAML Schema in its respective definitions folder. Active versions (v11 and v12) use `schema.yaml`; older, frozen versions keep their legacy `schema.json`.
 For more specific details between versions the schema files can be compared.
 
 To test a definition file against a specific schema use the command below.
@@ -57,7 +57,7 @@ python scripts/validate.py
 python scripts/validate.py /path/to/definitions
 
 # Validate single file against schema
-python scripts/validate.py --single "file.yml" "schema.json"
+python scripts/validate.py --single "file.yml" "schema.yaml"
 
 # Show only first error (default shows all errors)
 python scripts/validate.py --first-error-only
@@ -70,10 +70,24 @@ python scripts/validate.py --find-best-version "file.yml"
 ```
 
 The validation script supports:
-- **Flexible directory structures**: Works with Prowlarr's versioned directories (`v11/` and `v12`) and Jackett's flat structure with root `schema.json`
+- **Flexible directory structures**: Works with Prowlarr's versioned directories (`v11/` and `v12/` with `schema.yaml`) and Jackett's flat structure with a root `schema.yaml` or legacy `schema.json`
 - **All errors by default**: Shows all validation issues at once instead of stopping at the first error
 - **Concise error messages**: Clean output showing only validation type, schema path, and invalid values
 - **Auto-detection**: Automatically detects directory structure and uses appropriate validation method
+
+### Pre-commit Hooks
+
+[prek](https://prek.j178.dev/) runs the same checks locally before commit:
+
+```bash
+# Install the Git hook shims (one time)
+prek install
+
+# Run all configured hooks
+prek run --all-files
+```
+
+The `prek` configuration uses `ys` (yaml-schema) to validate `definitions/v11` and `definitions/v12` against their YAML schemas, and `check-jsonschema` to validate the schema files themselves.
 
 ## Active Versions
 

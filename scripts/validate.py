@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-JSON Schema validation for Prowlarr indexer definitions.
-Alternative to Node.js-based validation using Python.
+Schema validation for Prowlarr indexer definitions.
+
+Supports YAML Schema files (schema.yaml) for active versions and legacy JSON
+Schema files (schema.json) for older versions and Jackett-style layouts.
 """
 
 import sys
@@ -14,7 +16,7 @@ import yaml
 
 # Constants
 DEFAULT_DEFINITIONS_DIR = "definitions"
-SCHEMA_FILENAME = "schema.json"
+SCHEMA_FILENAMES = ("schema.yaml", "schema.json")
 YAML_EXTENSIONS = ["*.yml", "*.yaml"]
 VERSIONS_FILE = "VERSIONS"
 schema_cache = {}  # Cache for loaded schemas
@@ -57,11 +59,11 @@ except ImportError:
     print("Error: jsonschema package is required. Install with: pip install jsonschema", file=sys.stderr)
     sys.exit(1)
 
-def load_json_schema(schema_path, use_cache=None):
-    """Load and return JSON schema from file with optional caching."""
+def load_schema(schema_path, use_cache=None):
+    """Load and return a schema from a YAML or JSON file with optional caching."""
     # Default to True unless explicitly disabled or cache is empty (indicating no-cache mode)
     if use_cache is None:
-        use_cache = len(schema_cache) != 0 or not hasattr(load_json_schema, '_cache_disabled')
+        use_cache = len(schema_cache) != 0 or not hasattr(load_schema, '_cache_disabled')
 
     # Check cache first if enabled
     if use_cache and schema_path in schema_cache:
@@ -69,13 +71,38 @@ def load_json_schema(schema_path, use_cache=None):
 
     try:
         with open(schema_path, 'r', encoding='utf-8') as f:
-            schema = json.load(f)
-            if use_cache and not hasattr(load_json_schema, '_cache_disabled'):
+            if str(schema_path).endswith(('.yaml', '.yml')):
+                schema = yaml.safe_load(f)
+            else:
+                schema = json.load(f)
+            if use_cache and not hasattr(load_schema, '_cache_disabled'):
                 schema_cache[schema_path] = schema  # Cache the schema
             return schema
-    except (json.JSONDecodeError, FileNotFoundError) as e:
+    except (json.JSONDecodeError, yaml.YAMLError, FileNotFoundError) as e:
         print(f"Error loading schema {schema_path}: {e}", file=sys.stderr)
         return None
+
+
+def build_validator(schema):
+    """Build a validator once per schema, including the metaschema check."""
+    validator_class = validator_for(schema)
+    validator_class.check_schema(schema)
+    return validator_class(schema)
+
+
+def find_schema_path(directory):
+    """Return the schema path for a directory, preferring schema.yaml."""
+    for filename in SCHEMA_FILENAMES:
+        schema_path = os.path.join(directory, filename)
+        if os.path.exists(schema_path):
+            return schema_path
+    return None
+
+
+def is_schema_file(path):
+    """Return True when a path is one of the schema files, not an instance."""
+    return os.path.basename(path) in SCHEMA_FILENAMES
+
 
 def convert_keys_and_values_to_strings(obj, path=''):
     """Recursively convert numeric/boolean keys and option values to strings for jsonschema compatibility."""
@@ -118,18 +145,13 @@ def load_yaml_file(yaml_path):
         print(f"Error loading YAML {yaml_path}: {e}", file=sys.stderr)
         return None
 
-def validate_file_against_schema(yaml_path, schema, all_errors=False):
-    """Validate a single YAML file against the schema."""
+def validate_file_against_schema(yaml_path, validator, all_errors=False):
+    """Validate a single YAML file against a pre-built validator."""
     data = load_yaml_file(yaml_path)
     if data is None:
         return False, f"Failed to load YAML file: {yaml_path}"
 
     try:
-        # Use Draft 2019-09 validator to match the original implementation
-        validator_class = validator_for(schema)
-        validator_class.check_schema(schema)
-        validator = validator_class(schema)
-
         if all_errors:
             # Collect all validation errors
             errors = sorted(validator.iter_errors(data), key=str)
@@ -172,9 +194,15 @@ def validate_files_in_directory(directory, schema_path, all_errors=False, verbos
     error_count = 0
     total_files = 0
 
-    schema = load_json_schema(schema_path)
+    schema = load_schema(schema_path)
     if schema is None:
         print(f"Error: Failed to load schema from {schema_path}")
+        return False
+
+    try:
+        validator = build_validator(schema)
+    except Exception as e:
+        print(f"Error: Invalid schema {schema_path}: {e}")
         return False
 
     # Find all YAML files in directory
@@ -187,12 +215,12 @@ def validate_files_in_directory(directory, schema_path, all_errors=False, verbos
         return True  # Not an error if no files to validate
 
     for yaml_file in sorted(yaml_files):
-        # Skip schema.json files
-        if os.path.basename(yaml_file) == SCHEMA_FILENAME:
+        # Skip schema files
+        if is_schema_file(yaml_file):
             continue
 
         total_files += 1
-        is_valid, error_msg = validate_file_against_schema(yaml_file, schema, all_errors)
+        is_valid, error_msg = validate_file_against_schema(yaml_file, validator, all_errors)
 
         if not is_valid:
             print(f"FAIL: {error_msg}")
@@ -216,6 +244,7 @@ def _find_yaml_files_without_schema(definitions_dir):
     yaml_files = []
     for extension in YAML_EXTENSIONS:
         yaml_files.extend(glob.glob(os.path.join(definitions_dir, extension)))
+    yaml_files = [path for path in yaml_files if not is_schema_file(path)]
     if yaml_files:
         print(f"Found {len(yaml_files)} YAML files but no schema for validation")
         for yaml_file in sorted(yaml_files):
@@ -235,20 +264,27 @@ def _validate_version_dir(version_dir, all_errors=False, verbose=False):
 
     print(f"Validating {version_dir}")
 
-    schema_path = os.path.join(version_dir, SCHEMA_FILENAME)
-    if not os.path.exists(schema_path):
+    schema_path = find_schema_path(version_dir)
+    if schema_path is None:
         if version_num >= MIN_SCHEMA_VERSION:
-            print(f"Warning: No schema.json found in {version_dir}")
+            print(f"Warning: No schema.yaml or schema.json found in {version_dir}")
         return True, 0, 0
 
-    schema = load_json_schema(schema_path)
+    schema = load_schema(schema_path)
     if schema is None:
         print(f"Error: Failed to load schema from {schema_path}")
+        return False, 1, 0
+
+    try:
+        validator = build_validator(schema)
+    except Exception as e:
+        print(f"Error: Invalid schema {schema_path}: {e}")
         return False, 1, 0
 
     yaml_files = []
     for extension in YAML_EXTENSIONS:
         yaml_files.extend(glob.glob(os.path.join(version_dir, extension)))
+    yaml_files = [path for path in yaml_files if not is_schema_file(path)]
 
     if not yaml_files:
         if version_num >= MIN_SCHEMA_VERSION:
@@ -258,7 +294,7 @@ def _validate_version_dir(version_dir, all_errors=False, verbose=False):
     success = True
     error_count = 0
     for yaml_file in sorted(yaml_files):
-        is_valid, error_msg = validate_file_against_schema(yaml_file, schema, all_errors)
+        is_valid, error_msg = validate_file_against_schema(yaml_file, validator, all_errors)
         if not is_valid:
             print(f"FAIL: {error_msg}")
             success = False
@@ -271,9 +307,9 @@ def _validate_version_dir(version_dir, all_errors=False, verbose=False):
 
 def validate_directory(definitions_dir, all_errors=False, verbose=False):
     """Validate all YAML files in a definitions directory."""
-    # Check for schema.json in root directory first (Jackett-style)
-    root_schema_path = os.path.join(definitions_dir, SCHEMA_FILENAME)
-    if os.path.exists(root_schema_path):
+    # Check for a root schema first (Jackett-style)
+    root_schema_path = find_schema_path(definitions_dir)
+    if root_schema_path is not None:
         print(f"Found root schema, validating files in {definitions_dir}")
         return validate_files_in_directory(definitions_dir, root_schema_path, all_errors, verbose)
 
@@ -308,15 +344,21 @@ def find_best_schema_version(yaml_file, definitions_dir=DEFAULT_DEFINITIONS_DIR)
     matched_version = 0
 
     for version in range(MIN_SCHEMA_VERSION, MAX_SCHEMA_VERSION + 1):
-        schema_path = os.path.join(definitions_dir, f"v{version}", SCHEMA_FILENAME)
-        if not os.path.exists(schema_path):
+        schema_path = find_schema_path(os.path.join(definitions_dir, f"v{version}"))
+        if schema_path is None:
             continue
 
-        schema = load_json_schema(schema_path)
+        schema = load_schema(schema_path)
         if schema is None:
             continue
 
-        is_valid, _ = validate_file_against_schema(yaml_file, schema, False)
+        try:
+            validator = build_validator(schema)
+        except Exception as e:
+            print(f"Warning: Invalid schema {schema_path}: {e}", file=sys.stderr)
+            continue
+
+        is_valid, _ = validate_file_against_schema(yaml_file, validator, False)
         if is_valid:
             matched_version = version
         else:
@@ -328,11 +370,17 @@ def find_best_schema_version(yaml_file, definitions_dir=DEFAULT_DEFINITIONS_DIR)
 
 def validate_single_file(yaml_file, schema_file, all_errors=False):
     """Validate a single file against a schema."""
-    schema = load_json_schema(schema_file)
+    schema = load_schema(schema_file)
     if schema is None:
         return False
 
-    is_valid, error_msg = validate_file_against_schema(yaml_file, schema, all_errors)
+    try:
+        validator = build_validator(schema)
+    except Exception as e:
+        print(f"Error: Invalid schema {schema_file}: {e}", file=sys.stderr)
+        return False
+
+    is_valid, error_msg = validate_file_against_schema(yaml_file, validator, all_errors)
     if not is_valid:
         print(error_msg, file=sys.stderr)
         return False
@@ -340,7 +388,7 @@ def validate_single_file(yaml_file, schema_file, all_errors=False):
     return True
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate Prowlarr indexer definitions against JSON schemas")
+    parser = argparse.ArgumentParser(description="Validate Prowlarr indexer definitions against YAML/JSON schemas")
     parser.add_argument("definitions_dir", nargs="?", default=DEFAULT_DEFINITIONS_DIR,
                        help=f"Path to definitions directory (default: {DEFAULT_DEFINITIONS_DIR})")
     parser.add_argument("--definitions-dir", "-d", dest="definitions_dir_override",
@@ -377,7 +425,7 @@ def main():
         if args.no_cache:
             global schema_cache
             schema_cache = {}  # Clear cache
-            load_json_schema._cache_disabled = True  # Disable caching
+            load_schema._cache_disabled = True  # Disable caching
 
         # Determine error reporting mode
         all_errors = args.all_errors and not args.first_error_only
