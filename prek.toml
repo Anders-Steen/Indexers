@@ -17,12 +17,15 @@ args = ["definitions"]
 pass_filenames = false
 files = '^definitions/.*\.ya?ml$'
 
+# Validate the schema files themselves against the bundled YAML Schema metaschema.
 [[repos]]
-repo = "https://github.com/python-jsonschema/check-jsonschema"
-rev = "0.38.2"
-hooks = [
-  { id = "check-metaschema", files = '^definitions/.*/schema\.yaml$' }
-]
+repo = "https://github.com/yaml-schema/yaml-schema"
+rev = "d7b7e16f9e8aae9016aa7f3fc71d8559945c2380"
+
+[[repos.hooks]]
+id = "ys"
+args = ["-f", "definitions/yaml-schema.yaml"]
+files = '^definitions/.*/schema\.yaml$'
 
 [[repos]]
 repo = "https://github.com/astral-sh/ruff-pre-commit"

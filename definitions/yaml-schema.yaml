@@ -1,0 +1,209 @@
+---
+$schema: https://yaml-schema.net/yaml-schema.yaml
+$id: https://yaml-schema.net/draft/2025-11/meta-schema
+title: YAML Schema meta-schema
+description: Meta-schema for YAML Schema, based on JSON Schema meta-schema
+$ref: "#/$defs/schema"
+$defs:
+  valid_types:
+    description: A list of valid types
+    type: string
+    enum:
+      # Scalars
+      - boolean
+      - integer
+      - number
+      - string
+      - "null"
+      # Complex Types
+      - array
+      - enum
+      - object
+  schema_type:
+    description: >-
+      The type of the schema
+    oneOf:
+      - $ref: "#/$defs/valid_types"
+      # An unquoted YAML `null` (e.g. `type: null`) is accepted as the "null" type
+      - type: "null"
+      - type: array
+        items:
+          $ref: "#/$defs/valid_types"
+  property_names_subschema:
+    description: >-
+      JSON Schema `propertyNames`: a full subschema validated against each mapping key
+      (scalar keys only on instances). The subschema cannot be `type: array` or
+      `type: object` (or use array/object keywords such as `items` or `properties`);
+      only scalar types (`string`, `integer`, `number`, `boolean`, `null`) are
+      permitted. Supports other keywords from `#/$defs/schema` (e.g. `enum`, `const`,
+      `pattern`, `oneOf`, `anyOf`, `allOf`). When no `type` is provided, the subschema
+      is treated as `type: string` and validates the canonical string form of the key.
+      Non-string scalar types validate the YAML key node directly.
+    $ref: "#/$defs/schema"
+  non_negative_integer:
+    type: integer
+    minimum: 0
+  boolean_or_schema:
+    oneOf:
+      - type: boolean
+      - $ref: "#/$defs/schema"
+  array_of_schemas:
+    description: >-
+      An array of schemas
+    type: array
+    items:
+      $ref: "#/$defs/schema"
+  map_of_schemas:
+    description: >-
+      A mapping whose values are all schemas
+    type: object
+    additionalProperties:
+      $ref: "#/$defs/schema"
+  schema:
+    description: >-
+      A YAML Schema. Unknown keywords are rejected, so misspelled keywords (e.g. `typxe`)
+      are reported instead of being silently ignored.
+    type: object
+    properties:
+      # Core
+      $schema:
+        description: Specifies which draft of the JSON Schema standard the schema adheres to.
+        type: string
+      $id:
+        description: >-
+          Sets a URI for the schema. You can use this unique URI to refer to elements of the
+          schema from inside the same document or from external JSON documents.
+        type: string
+      $ref:
+        description: A reference to another schema, by JSON Pointer fragment or URI.
+        type: string
+      $defs:
+        description: A container for reusable JSON Schema fragments.
+        $ref: "#/$defs/map_of_schemas"
+      # Metadata
+      title:
+        description: >-
+          The title of the schema
+        type: string
+      description:
+        description: A description of the schema
+        type: string
+      # Any type
+      type:
+        description: defines the first constraint on the JSON data.
+        $ref: "#/$defs/schema_type"
+      enum:
+        description: An array of accepted values
+        type: array
+      const:
+        description: A value that the instance must be equal to
+      default:
+        description: An annotation giving a default value; not used for validation
+      # Objects
+      properties:
+        description: The properties that are defined in the schema
+        $ref: "#/$defs/map_of_schemas"
+      patternProperties:
+        description: >-
+          Schemas applied to every property whose name matches the regular expression key
+        $ref: "#/$defs/map_of_schemas"
+      additionalProperties:
+        description: >-
+          Schema (or boolean) applied to properties not matched by `properties` or
+          `patternProperties`
+        $ref: "#/$defs/boolean_or_schema"
+      required:
+        description: An array of property names that must be present on the instance
+        type: array
+        items:
+          type: string
+      propertyNames:
+        $ref: "#/$defs/property_names_subschema"
+      minProperties:
+        $ref: "#/$defs/non_negative_integer"
+      maxProperties:
+        $ref: "#/$defs/non_negative_integer"
+      dependentRequired:
+        description: >-
+          When a property named by a key is present, every string in the array must also
+          be a property of the instance.
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+      dependentSchemas:
+        description: >-
+          When a property named by a key is present, the entire object instance must
+          validate against the corresponding subschema.
+        $ref: "#/$defs/map_of_schemas"
+      unevaluatedProperties:
+        description: >-
+          JSON Schema 2020-12 unevaluated vocabulary. Applies to object properties not already
+          evaluated by properties, patternProperties, additionalProperties, or in-place
+          applicators (e.g. allOf).
+        $ref: "#/$defs/boolean_or_schema"
+      # Arrays
+      items:
+        $ref: "#/$defs/boolean_or_schema"
+      prefixItems:
+        $ref: "#/$defs/array_of_schemas"
+      contains:
+        $ref: "#/$defs/schema"
+      minContains:
+        $ref: "#/$defs/non_negative_integer"
+      maxContains:
+        $ref: "#/$defs/non_negative_integer"
+      minItems:
+        $ref: "#/$defs/non_negative_integer"
+      maxItems:
+        $ref: "#/$defs/non_negative_integer"
+      uniqueItems:
+        type: boolean
+      unevaluatedItems:
+        description: >-
+          JSON Schema 2020-12 unevaluated vocabulary. Applies to array elements not already
+          evaluated by prefixItems, items, contains, or in-place applicators.
+        $ref: "#/$defs/boolean_or_schema"
+      # Strings
+      minLength:
+        $ref: "#/$defs/non_negative_integer"
+      maxLength:
+        $ref: "#/$defs/non_negative_integer"
+      pattern:
+        type: string
+      format:
+        type: string
+      # Numbers
+      minimum:
+        type: number
+      maximum:
+        type: number
+      exclusiveMinimum:
+        type: number
+      exclusiveMaximum:
+        type: number
+      multipleOf:
+        type: number
+      # Composition
+      allOf:
+        $ref: "#/$defs/array_of_schemas"
+      anyOf:
+        $ref: "#/$defs/array_of_schemas"
+      oneOf:
+        $ref: "#/$defs/array_of_schemas"
+      not:
+        $ref: "#/$defs/schema"
+      # Conditionals
+      if:
+        description: >-
+          Subschema used only to choose whether `then` or `else` is applied; its assertion
+          errors are not reported on the parent.
+        $ref: "#/$defs/schema"
+      then:
+        description: Applied when the instance validates against `if`.
+        $ref: "#/$defs/schema"
+      else:
+        description: Applied when the instance does not validate against `if`.
+        $ref: "#/$defs/schema"
+    additionalProperties: false
