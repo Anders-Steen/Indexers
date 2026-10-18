@@ -1,0 +1,36 @@
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "check-added-large-files" },
+  { id = "check-yaml" },
+]
+
+[[repos]]
+repo = "https://github.com/owenlamont/ryl-pre-commit"
+rev = "v0.26.0"
+
+[[repos.hooks]]
+id = "ryl-check"
+args = ["definitions"]
+pass_filenames = false
+files = '^definitions/.*\.ya?ml$'
+
+# Validate the schema files themselves against the bundled YAML Schema metaschema.
+[[repos]]
+repo = "https://github.com/yaml-schema/yaml-schema"
+rev = "d7b7e16f9e8aae9016aa7f3fc71d8559945c2380"
+
+[[repos.hooks]]
+id = "ys"
+args = ["-f", "definitions/yaml-schema.yaml"]
+files = '^definitions/.*/schema\.yaml$'
+
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.17.1"
+hooks = [
+  { id = "ruff-check" },
+  { id = "ruff-format" }
+]

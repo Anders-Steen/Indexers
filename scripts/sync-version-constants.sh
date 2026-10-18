@@ -22,7 +22,7 @@ echo "  NEXT_VERSION: $NEXT_VERSION"
 # Update validate.py
 if [ -f "scripts/validate.py" ]; then
     sed -i "s/'MIN_VERSION': [0-9]*,/'MIN_VERSION': $MIN_VERSION,/" scripts/validate.py
-    sed -i "s/'MAX_VERSION': [0-9]*,/'MAX_VERSION': $MAX_VERSION,/" scripts/validate.py  
+    sed -i "s/'MAX_VERSION': [0-9]*,/'MAX_VERSION': $MAX_VERSION,/" scripts/validate.py
     sed -i "s/'CURRENT_VERSION': [0-9]*,/'CURRENT_VERSION': $CURRENT_VERSION,/" scripts/validate.py
     sed -i "s/'NEXT_VERSION': [0-9]*/'NEXT_VERSION': $NEXT_VERSION/" scripts/validate.py
     echo "✓ Updated scripts/validate.py"

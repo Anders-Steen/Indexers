@@ -1,0 +1,11 @@
+# Copy this file into any new definitions/vN directory.
+# Paths are relative to this directory, so the hook needs no version number.
+[[repos]]
+repo = "https://github.com/yaml-schema/yaml-schema"
+rev = "d7b7e16f9e8aae9016aa7f3fc71d8559945c2380"
+
+[[repos.hooks]]
+id = "ys"
+args = ["-f", "schema.yaml"]
+files = '\.ya?ml$'
+exclude = '^schema\.yaml$'

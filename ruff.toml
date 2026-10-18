@@ -1,0 +1,7 @@
+target-version = "py311"
+
+[lint]
+extend-select = ["I"]
+# validate.py intentionally catches broad exceptions so one bad file does not
+# abort the whole validation run.
+ignore = ["BLE001"]

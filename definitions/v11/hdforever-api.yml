@@ -33,7 +33,7 @@ caps:
 settings:
   - name: apikey
     type: password
-    label: API key
+    label: APIKey
   - name: info_key
     type: info
     label: About your API key

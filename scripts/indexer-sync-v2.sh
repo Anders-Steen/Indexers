@@ -207,7 +207,19 @@ determine_schema_version() {
     check_version=$(echo "$def_file" | cut -d'/' -f2)
     log "VERBOSE" "Extracted version: $check_version"
     dir="definitions/$check_version"
-    schema="$dir/schema.json"
+    schema=""
+    if [ -f "$dir/schema.yaml" ]; then
+        schema="$dir/schema.yaml"
+    elif [ -f "$dir/schema.json" ]; then
+        schema="$dir/schema.json"
+    fi
+
+    if [ -z "$schema" ]; then
+        log "WARN" "No schema found in [$dir]"
+        check_version="v0"
+        export check_version
+        return
+    fi
 
     log "DEBUG" "Checking file against schema [$schema]"
     local test_output
@@ -615,7 +627,7 @@ pull_cherry_and_merge() {
 
     # Remove unwanted file types that Jackett might have added
     # Explicitly exclude important repository files and schema files
-    unwanted_files=$(git diff --cached --name-only | grep -E "$CONFLICTS_NONYML_EXTENSIONS" | grep -v -E '^(README\.md|CONTRIBUTING\.md|LICENSE\.md)$' | grep -v 'schema\.json$' | grep -v -E '^\.github' || true)
+    unwanted_files=$(git diff --cached --name-only | grep -E "$CONFLICTS_NONYML_EXTENSIONS" | grep -v -E '^(README\.md|CONTRIBUTING\.md|LICENSE\.md)$' | grep -v -E 'schema\.(json|yaml)$' | grep -v -E '^\.github' || true)
     if [ -n "$unwanted_files" ]; then
         log "INFO" "Removing unwanted file types from Jackett"
         echo "$unwanted_files" | while IFS= read -r file; do
@@ -658,13 +670,13 @@ pull_cherry_and_merge() {
     fi
 
     # Checkout schema files if they exist - expand the glob pattern first
-    schema_files=$(find definitions -type f -name "schema.json" -path "*/v[0-9]*/schema.json" 2>/dev/null)
+    schema_files=$(find definitions -type f \( -name "schema.json" -o -name "schema.yaml" \) -path "*/v[0-9]*/*" 2>/dev/null)
     if [ -n "$schema_files" ]; then
         for schema_file in $schema_files; do
             git checkout HEAD -- "$schema_file" 2>/dev/null || true
         done
     else
-        log "DEBUG" "No schema.json files found to checkout"
+        log "DEBUG" "No schema files found to checkout"
     fi
 
     handle_new_indexers
@@ -711,9 +723,9 @@ resolve_conflicts() {
 
     readme_conflicts=$(echo "$conflicted_files" | grep -E '^README\.md$' || true)
     # Explicitly exclude important repository files and schema files from nonyml conflicts
-    nonyml_conflicts=$(echo "$conflicted_files" | grep -E "$CONFLICTS_NONYML_EXTENSIONS" | grep -v -E '^(README\.md|CONTRIBUTING\.md|LICENSE\.md)$' | grep -v 'schema\.json$' | grep -v -E '^\.github' || true)
-    yml_conflicts=$(echo "$conflicted_files" | grep -E '\.ya?ml$' | grep -v -E '^\.github' || true)
-    schema_conflicts=$(echo "$conflicted_files" | grep -E '\.schema\.json$' || true)
+    nonyml_conflicts=$(echo "$conflicted_files" | grep -E "$CONFLICTS_NONYML_EXTENSIONS" | grep -v -E '^(README\.md|CONTRIBUTING\.md|LICENSE\.md)$' | grep -v -E 'schema\.(json|yaml)$' | grep -v -E '^\.github' || true)
+    yml_conflicts=$(echo "$conflicted_files" | grep -E '\.ya?ml$' | grep -v -E '^\.github' | grep -v -E '(^|/)schema\.(json|yaml)$' || true)
+    schema_conflicts=$(echo "$conflicted_files" | grep -E '(^|/)schema\.(json|yaml)$' || true)
     github_conflicts=$(echo "$conflicted_files" | grep -E '^\.github' || true)
 
     log "WARN" "conflicts exist"
